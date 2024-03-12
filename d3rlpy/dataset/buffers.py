@@ -1,7 +1,10 @@
 from collections import deque
+from pathlib import Path
 from typing import Deque, List, Sequence, Tuple
 
 from typing_extensions import Protocol
+
+import torch
 
 from .components import EpisodeBase
 
@@ -40,6 +43,37 @@ class BufferProtocol(Protocol):
 
     def __getitem__(self, index: int) -> Tuple[EpisodeBase, int]:
         raise NotImplementedError
+
+
+from torch.utils.data.dataset import Dataset
+class FileBuffer(Dataset):
+    r"""Buffer with unlimited capacity."""
+    _transitions: List[Tuple[EpisodeBase, int]]
+    _episodes: List[EpisodeBase]
+
+    def __init__(self, dir: Path) -> None:
+        self._transitions = []
+        self._episodes = []
+        self._transition_count = 0
+        self._files = list(dir.rglob("*.npy"))
+
+    @property
+    def episodes(self) -> Sequence[EpisodeBase]:
+        raise NotImplementedError()
+        return self._episodes
+
+    @property
+    def transition_count(self) -> int:
+        return len(self._files)
+
+    def __len__(self) -> int:
+        return self.transition_count
+
+    def __getitem__(self, index: int):
+        file = self._files[index]
+        data = torch.load(file)
+        data['interval'] = 1
+        return data
 
 
 class InfiniteBuffer(BufferProtocol):

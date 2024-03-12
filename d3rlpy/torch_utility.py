@@ -178,15 +178,25 @@ class TorchMiniBatch:
         reward_scaler: Optional[RewardScaler] = None,
     ) -> "TorchMiniBatch":
         # convert numpy array to torch tensor
-        observations = convert_to_torch_recursively(batch.observations, device)
-        actions = convert_to_torch(batch.actions, device)
-        rewards = convert_to_torch(batch.rewards, device)
-        next_observations = convert_to_torch_recursively(
-            batch.next_observations, device
-        )
-        returns_to_go = convert_to_torch(batch.returns_to_go, device)
-        terminals = convert_to_torch(batch.terminals, device)
-        intervals = convert_to_torch(batch.intervals, device)
+        if isinstance(batch, TransitionMiniBatch):
+            observations = convert_to_torch_recursively(batch.observations, device)
+            actions = convert_to_torch(batch.actions, device)
+            rewards = convert_to_torch(batch.rewards, device)
+            next_observations = convert_to_torch_recursively(
+                batch.next_observations, device
+            )
+            returns_to_go = convert_to_torch(batch.returns_to_go, device)
+            terminals = convert_to_torch(batch.terminals, device)
+            intervals = convert_to_torch(batch.intervals, device)
+        else:
+            batch = {k: v.to(device).to(torch.float32) for k, v in batch.items()}
+            observations = batch['observation']
+            actions = batch['action']
+            rewards = batch['reward']
+            next_observations = batch['next-observation']
+            returns_to_go = batch['return-to-go']
+            terminals = batch['terminal']
+            intervals = batch['interval']
 
         # apply scaler
         if observation_scaler:

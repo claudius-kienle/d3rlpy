@@ -238,6 +238,8 @@ class TransformerAlgoBase(
         experiment_name: Optional[str] = None,
         with_timestamp: bool = True,
         logger_adapter: LoggerAdapterFactory = FileAdapterFactory(),
+        logging_steps: int = 500,
+        logging_strategy: str = "epoch",
         show_progress: bool = True,
         eval_env: Optional[GymEnv] = None,
         eval_target_return: Optional[float] = None,
@@ -314,19 +316,19 @@ class TransformerAlgoBase(
             epoch_loss = defaultdict(list)
 
             range_gen = tqdm(
-                range(n_steps_per_epoch),
+                dataset,
                 disable=not show_progress,
                 desc=f"Epoch {int(epoch)}/{n_epochs}",
             )
 
-            for itr in range_gen:
+            for itr, batch in enumerate(range_gen):
                 with logger.measure_time("step"):
-                    # pick transitions
-                    with logger.measure_time("sample_batch"):
-                        batch = dataset.sample_trajectory_batch(
-                            self._config.batch_size,
-                            length=self._config.context_size,
-                        )
+                    # # pick transitions
+                    # with logger.measure_time("sample_batch"):
+                    #     batch = dataset.sample_trajectory_batch(
+                    #         self._config.batch_size,
+                    #         length=self._config.context_size,
+                    #     )
 
                     # update parameters
                     with logger.measure_time("algorithm_update"):
@@ -346,9 +348,16 @@ class TransformerAlgoBase(
 
                 total_step += 1
 
+                if logging_strategy == 'steps' and total_step % logging_steps == 0:
+                    metrics = logger.commit(epoch, total_step)
+
                 # call callback if given
                 if callback:
                     callback(self, epoch, total_step)
+
+                # save model parameters
+                if total_step % save_interval == 0:
+                    logger.save_model(total_step, self)
 
             if eval_env:
                 assert eval_target_return is not None
@@ -362,7 +371,8 @@ class TransformerAlgoBase(
                 logger.add_metric("environment", eval_score)
 
             # save metrics
-            logger.commit(epoch, total_step)
+            if logging_strategy == 'epoch':
+                metrics = logger.commit(epoch, total_step)
 
             # save model parameters
             if epoch % save_interval == 0:

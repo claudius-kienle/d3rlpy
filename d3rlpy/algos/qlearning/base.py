@@ -523,18 +523,18 @@ class QLearningAlgoBase(
             epoch_loss = defaultdict(list)
 
             range_gen = tqdm(
-                range(n_steps_per_epoch),
+                dataset,
                 disable=not show_progress,
                 desc=f"Epoch {int(epoch)}/{n_epochs}",
             )
 
-            for itr in range_gen:
+            for itr, batch in enumerate(range_gen):
                 with logger.measure_time("step"):
-                    # pick transitions
-                    with logger.measure_time("sample_batch"):
-                        batch = dataset.sample_transition_batch(
-                            self._config.batch_size
-                        )
+                    # # pick transitions
+                    # with logger.measure_time("sample_batch"):
+                    #     batch = dataset.sample_transition_batch(
+                    #         self._config.batch_size
+                    #     )
 
                     # update parameters
                     with logger.measure_time("algorithm_update"):
@@ -564,6 +564,10 @@ class QLearningAlgoBase(
                 if callback:
                     callback(self, epoch, total_step)
 
+                # save model parameters
+                if total_step % save_interval == 0:
+                    logger.save_model(total_step, self)
+
             # call epoch_callback if given
             if epoch_callback:
                 epoch_callback(self, epoch, total_step)
@@ -577,9 +581,6 @@ class QLearningAlgoBase(
             if logging_strategy == LoggingStrategy.EPOCH:
                 metrics = logger.commit(epoch, total_step)
 
-            # save model parameters
-            if epoch % save_interval == 0:
-                logger.save_model(total_step, self)
 
             yield epoch, metrics
 

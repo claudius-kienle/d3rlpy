@@ -112,9 +112,7 @@ class ReplayBufferBase(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def sample_trajectory_batch(
-        self, batch_size: int, length: int
-    ) -> TrajectoryMiniBatch:
+    def sample_trajectory_batch(self, batch_size: int, length: int) -> TrajectoryMiniBatch:
         r"""Samples a mini-batch of partial trajectories.
 
         Args:
@@ -355,9 +353,7 @@ class ReplayBuffer(ReplayBufferBase):
         trajectory_slicer = trajectory_slicer or BasicTrajectorySlicer()
         writer_preprocessor = writer_preprocessor or BasicWriterPreprocess()
 
-        if not (
-            observation_signature and action_signature and reward_signature
-        ):
+        if not (observation_signature and action_signature and reward_signature):
             if episodes:
                 observation_signature = episodes[0].observation_signature
                 action_signature = episodes[0].action_signature
@@ -376,10 +372,8 @@ class ReplayBuffer(ReplayBufferBase):
                     shape=[[1]],
                 )
             else:
-                raise ValueError(
-                    "Either episodes or env must be provided to determine signatures."
-                    " Or specify signatures directly."
-                )
+                raise ValueError("Either episodes or env must be provided to determine signatures."
+                                 " Or specify signatures directly.")
             LOG.info(
                 "Signatures have been automatically determined.",
                 observation_signature=observation_signature,
@@ -393,10 +387,8 @@ class ReplayBuffer(ReplayBufferBase):
             elif env:
                 action_space = detect_action_space_from_env(env)
             else:
-                raise ValueError(
-                    "Either episodes or env must be provided to determine action_space."
-                    " Or specify action_space directly."
-                )
+                raise ValueError("Either episodes or env must be provided to determine action_space."
+                                 " Or specify action_space directly.")
             LOG.info(
                 "Action-space has been automatically determined.",
                 action_space=action_space,
@@ -409,17 +401,13 @@ class ReplayBuffer(ReplayBufferBase):
                 else:
                     max_action = 0
                     for episode in episodes:
-                        max_action = max(
-                            int(np.max(episode.actions)), max_action
-                        )
+                        max_action = max(int(np.max(episode.actions)), max_action)
                     action_size = max_action + 1  # index should start from 0
             elif env:
                 action_size = detect_action_size_from_env(env)
             else:
-                raise ValueError(
-                    "Either episodes or env must be provided to determine action_space."
-                    " Or specify action_size directly."
-                )
+                raise ValueError("Either episodes or env must be provided to determine action_space."
+                                 " Or specify action_size directly.")
             LOG.info(
                 "Action size has been automatically determined.",
                 action_size=action_size,
@@ -469,21 +457,16 @@ class ReplayBuffer(ReplayBufferBase):
         return self._transition_picker(episode, transition_index)
 
     def sample_transition_batch(self, batch_size: int) -> TransitionMiniBatch:
-        return TransitionMiniBatch.from_transitions(
-            [self.sample_transition() for _ in range(batch_size)]
-        )
+        return TransitionMiniBatch.from_transitions([self.sample_transition() for _ in range(batch_size)])
 
     def sample_trajectory(self, length: int) -> PartialTrajectory:
         index = np.random.randint(self._buffer.transition_count)
         episode, transition_index = self._buffer[index]
         return self._trajectory_slicer(episode, transition_index, length)
 
-    def sample_trajectory_batch(
-        self, batch_size: int, length: int
-    ) -> TrajectoryMiniBatch:
+    def sample_trajectory_batch(self, batch_size: int, length: int) -> TrajectoryMiniBatch:
         return TrajectoryMiniBatch.from_partial_trajectories(
-            [self.sample_trajectory(length) for _ in range(batch_size)]
-        )
+            [self.sample_trajectory(length) for _ in range(batch_size)])
 
     def dump(self, f: BinaryIO) -> None:
         dump(self._buffer.episodes, f)
@@ -625,46 +608,26 @@ class MixedReplayBuffer(ReplayBufferBase):
         self._primary_replay_buffer.clip_episode(terminated)
 
     def sample_transition(self) -> Transition:
-        raise NotImplementedError(
-            "MixedReplayBuffer does not support sample_transition."
-        )
+        raise NotImplementedError("MixedReplayBuffer does not support sample_transition.")
 
     def sample_transition_batch(self, batch_size: int) -> TransitionMiniBatch:
         primary_batch_size = int((1 - self._secondary_mix_ratio) * batch_size)
         secondary_batch_size = batch_size - primary_batch_size
-        primary_batches = [
-            self._primary_replay_buffer.sample_transition()
-            for _ in range(primary_batch_size)
-        ]
-        secondary_batches = [
-            self._secondary_replay_buffer.sample_transition()
-            for _ in range(secondary_batch_size)
-        ]
-        return TransitionMiniBatch.from_transitions(
-            primary_batches + secondary_batches
-        )
+        primary_batches = [self._primary_replay_buffer.sample_transition() for _ in range(primary_batch_size)]
+        secondary_batches = [self._secondary_replay_buffer.sample_transition() for _ in range(secondary_batch_size)]
+        return TransitionMiniBatch.from_transitions(primary_batches + secondary_batches)
 
     def sample_trajectory(self, length: int) -> PartialTrajectory:
-        raise NotImplementedError(
-            "MixedReplayBuffer does not support sample_trajectory."
-        )
+        raise NotImplementedError("MixedReplayBuffer does not support sample_trajectory.")
 
-    def sample_trajectory_batch(
-        self, batch_size: int, length: int
-    ) -> TrajectoryMiniBatch:
+    def sample_trajectory_batch(self, batch_size: int, length: int) -> TrajectoryMiniBatch:
         primary_batch_size = int((1 - self._secondary_mix_ratio) * batch_size)
         secondary_batch_size = batch_size - primary_batch_size
-        primary_batches = [
-            self._primary_replay_buffer.sample_trajectory(length)
-            for _ in range(primary_batch_size)
-        ]
+        primary_batches = [self._primary_replay_buffer.sample_trajectory(length) for _ in range(primary_batch_size)]
         secondary_batches = [
-            self._secondary_replay_buffer.sample_trajectory(length)
-            for _ in range(secondary_batch_size)
+            self._secondary_replay_buffer.sample_trajectory(length) for _ in range(secondary_batch_size)
         ]
-        return TrajectoryMiniBatch.from_partial_trajectories(
-            primary_batches + secondary_batches
-        )
+        return TrajectoryMiniBatch.from_partial_trajectories(primary_batches + secondary_batches)
 
     def dump(self, f: BinaryIO) -> None:
         raise NotImplementedError("MixedReplayBuffer does not support dump.")
@@ -678,9 +641,7 @@ class MixedReplayBuffer(ReplayBufferBase):
         trajectory_slicer: Optional[TrajectorySlicerProtocol] = None,
         writer_preprocessor: Optional[WriterPreprocessProtocol] = None,
     ) -> "ReplayBuffer":
-        raise NotImplementedError(
-            "MixedReplayBuffer does not support from_episode_generator."
-        )
+        raise NotImplementedError("MixedReplayBuffer does not support from_episode_generator.")
 
     @classmethod
     def load(
@@ -696,15 +657,10 @@ class MixedReplayBuffer(ReplayBufferBase):
 
     @property
     def episodes(self) -> Sequence[EpisodeBase]:
-        return list(self._primary_replay_buffer.episodes) + list(
-            self._secondary_replay_buffer.episodes
-        )
+        return list(self._primary_replay_buffer.episodes) + list(self._secondary_replay_buffer.episodes)
 
     def size(self) -> int:
-        return (
-            self._primary_replay_buffer.size()
-            + self._secondary_replay_buffer.size()
-        )
+        return (self._primary_replay_buffer.size() + self._secondary_replay_buffer.size())
 
     @property
     def buffer(self) -> BufferProtocol:
@@ -712,10 +668,7 @@ class MixedReplayBuffer(ReplayBufferBase):
 
     @property
     def transition_count(self) -> int:
-        return (
-            self._primary_replay_buffer.transition_count
-            + self._secondary_replay_buffer.transition_count
-        )
+        return (self._primary_replay_buffer.transition_count + self._secondary_replay_buffer.transition_count)
 
     @property
     def transition_picker(self) -> TransitionPickerProtocol:
@@ -816,3 +769,266 @@ def create_infinite_replay_buffer(
         writer_preprocessor=writer_preprocessor,
         env=env,
     )
+
+
+class EfficientReplayBuffer(ReplayBufferBase):
+    r"""Replay buffer for experience replay.
+
+    This replay buffer implementation is used for both online and offline
+    training in d3rlpy. To determine shapes of observations, actions and
+    rewards, one of ``episodes``, ``env`` and signatures must be provided.
+
+    .. code-block::
+
+        from d3rlpy.dataset import FIFOBuffer, ReplayBuffer, Signature
+
+        buffer = FIFOBuffer(limit=1000000)
+
+        # initialize with pre-collected episodes
+        replay_buffer = ReplayBuffer(buffer=buffer, episodes=<episodes>)
+
+        # initialize with Gym
+        replay_buffer = ReplayBuffer(buffer=buffer, env=<env>)
+
+        # initialize with manually specified signatures
+        replay_buffer = ReplayBuffer(
+            buffer=buffer,
+            observation_signature=Signature(dtype=[<dtype>], shape=[<shape>]),
+            action_signature=Signature(dtype=[<dtype>], shape=[<shape>]),
+            reward_signature=Signature(dtype=[<dtype>], shape=[<shape>]),
+        )
+
+    Args:
+        buffer (d3rlpy.dataset.BufferProtocol): Buffer implementation.
+        transition_picker (Optional[d3rlpy.dataset.TransitionPickerProtocol]):
+            Transition picker implementation for Q-learning-based algorithms.
+            If ``None`` is given, ``BasicTransitionPicker`` is used by default.
+        trajectory_slicer (Optional[d3rlpy.dataset.TrajectorySlicerProtocol]):
+            Trajectory slicer implementation for Transformer-based algorithms.
+            If ``None`` is given, ``BasicTrajectorySlicer`` is used by default.
+        writer_preprocessor (Optional[d3rlpy.dataset.WriterPreprocessProtocol]):
+            Writer preprocessor implementation. If ``None`` is given,
+            ``BasicWriterPreprocess`` is used by default.
+        episodes (Optional[Sequence[d3rlpy.dataset.EpisodeBase]]):
+            List of episodes to initialize replay buffer.
+        env (Optional[GymEnv]): Gym environment to extract shapes of
+            observations and action.
+        observation_signature (Optional[d3rlpy.dataset.Signature]):
+            Signature of observation.
+        action_signature (Optional[d3rlpy.dataset.Signature]):
+            Signature of action.
+        reward_signature (Optional[d3rlpy.dataset.Signature]):
+            Signature of reward.
+        action_space (Optional[d3rlpy.constants.ActionSpace]):
+            Action-space type.
+        action_size (Optional[int]): Size of action-space. For continuous
+            action-space, this represents dimension of action vectors. For
+            discrete action-space, this represents the number of discrete
+            actions.
+        cache_size (int): Size of cache to record active episode history used
+            for online training. ``cache_size`` needs to be greater than the
+            maximum possible episode length.
+    """
+    _buffer: BufferProtocol
+    _transition_picker: TransitionPickerProtocol
+    _trajectory_slicer: TrajectorySlicerProtocol
+    _writer: ExperienceWriter
+    _episodes: List[EpisodeBase]
+    _dataset_info: DatasetInfo
+
+    def __init__(
+        self,
+        buffer: BufferProtocol,
+        writer_preprocessor: Optional[WriterPreprocessProtocol] = None,
+        episode: Optional[EpisodeBase] = None,
+        env: Optional[GymEnv] = None,
+        observation_signature: Optional[Signature] = None,
+        action_signature: Optional[Signature] = None,
+        reward_signature: Optional[Signature] = None,
+        action_space: Optional[ActionSpace] = None,
+        action_size: Optional[int] = None,
+        cache_size: int = 10000,
+    ):
+        writer_preprocessor = writer_preprocessor or BasicWriterPreprocess()
+
+        if not (observation_signature and action_signature and reward_signature):
+            if episode:
+                observation_signature = episode.observation_signature
+                action_signature = episode.action_signature
+                reward_signature = episode.reward_signature
+            elif env:
+                observation_signature = Signature(
+                    dtype=[env.observation_space.dtype],
+                    shape=[env.observation_space.shape],  # type: ignore
+                )
+                action_signature = Signature(
+                    dtype=[env.action_space.dtype],
+                    shape=[env.action_space.shape],  # type: ignore
+                )
+                reward_signature = Signature(
+                    dtype=[np.dtype(np.float32)],
+                    shape=[[1]],
+                )
+            else:
+                raise ValueError("Either episodes or env must be provided to determine signatures."
+                                 " Or specify signatures directly.")
+            LOG.info(
+                "Signatures have been automatically determined.",
+                observation_signature=observation_signature,
+                action_signature=action_signature,
+                reward_signature=reward_signature,
+            )
+
+        if action_space is None:
+            if episode:
+                action_space = detect_action_space(episode.actions)
+            elif env:
+                action_space = detect_action_space_from_env(env)
+            else:
+                raise ValueError("Either episodes or env must be provided to determine action_space."
+                                 " Or specify action_space directly.")
+            LOG.info(
+                "Action-space has been automatically determined.",
+                action_space=action_space,
+            )
+
+        if action_size is None:
+            if episode:
+                if action_space == ActionSpace.CONTINUOUS:
+                    action_size = action_signature.shape[0][0]
+                else:
+                    raise NotImplementedError()
+            elif env:
+                action_size = detect_action_size_from_env(env)
+            else:
+                raise ValueError("Either episodes or env must be provided to determine action_space."
+                                 " Or specify action_size directly.")
+            LOG.info(
+                "Action size has been automatically determined.",
+                action_size=action_size,
+            )
+
+        self._buffer = buffer
+        self._bufferiter = iter(buffer)
+        self._writer = ExperienceWriter(
+            buffer,
+            writer_preprocessor,
+            observation_signature=observation_signature,
+            action_signature=action_signature,
+            reward_signature=reward_signature,
+            cache_size=cache_size,
+        )
+        self._dataset_info = DatasetInfo(
+            observation_signature=observation_signature,
+            action_signature=action_signature,
+            reward_signature=reward_signature,
+            action_space=action_space,
+            action_size=action_size,
+        )
+
+    def __len__(self) -> int:
+        return len(self._buffer)
+
+    def sample_transition(self) -> Transition:
+        data = self._buffer.dataset[0]
+        return Transition(
+            observation=data['observation'],
+            action=data['action'],
+            reward=data['reward'],
+            next_observation=data['next-observation'],
+            return_to_go=data['return-to-go'],
+            terminal=data['terminal'],
+            interval=1
+        )
+        return self._transition_picker(episode, transition_index)
+
+    def __iter__(self):
+        return iter(self._buffer)
+
+    def sample_transition_batch(self, batch_size: int) -> TransitionMiniBatch:
+        return next(self._bufferiter)
+
+    def sample_trajectory(self, length: int) -> PartialTrajectory:
+        raise NotImplementedError()
+        index = np.random.randint(self._buffer.transition_count)
+        episode, transition_index = self._buffer[index]
+        return self._trajectory_slicer(episode, transition_index, length)
+
+    def sample_trajectory_batch(self, batch_size: int, length: int) -> TrajectoryMiniBatch:
+        raise NotImplementedError()
+        return TrajectoryMiniBatch.from_partial_trajectories(
+            [self.sample_trajectory(length) for _ in range(batch_size)])
+
+    def append(self):
+        raise NotImplementedError()
+
+    def append_episode(self):
+        raise NotImplementedError()
+
+    def clip_episode(self):
+        raise NotImplementedError()
+
+    def dump(self, f: BinaryIO) -> None:
+        dump(self._buffer.episodes, f)
+
+    @classmethod
+    def from_episode_generator(
+        cls,
+        episode_generator: EpisodeGeneratorProtocol,
+        buffer: BufferProtocol,
+        transition_picker: Optional[TransitionPickerProtocol] = None,
+        trajectory_slicer: Optional[TrajectorySlicerProtocol] = None,
+        writer_preprocessor: Optional[WriterPreprocessProtocol] = None,
+    ) -> "ReplayBuffer":
+        return cls(
+            buffer,
+            episodes=episode_generator(),
+            transition_picker=transition_picker,
+            trajectory_slicer=trajectory_slicer,
+            writer_preprocessor=writer_preprocessor,
+        )
+
+    @classmethod
+    def load(
+        cls,
+        f: BinaryIO,
+        buffer: BufferProtocol,
+        episode_cls: Type[EpisodeBase] = Episode,
+        transition_picker: Optional[TransitionPickerProtocol] = None,
+        trajectory_slicer: Optional[TrajectorySlicerProtocol] = None,
+        writer_preprocessor: Optional[WriterPreprocessProtocol] = None,
+    ) -> "ReplayBuffer":
+        return cls(
+            buffer,
+            episodes=load(episode_cls, f),
+            transition_picker=transition_picker,
+            trajectory_slicer=trajectory_slicer,
+            writer_preprocessor=writer_preprocessor,
+        )
+
+    @property
+    def episodes(self) -> Sequence[EpisodeBase]:
+        return self._buffer.episodes
+
+    def size(self) -> int:
+        return len(self._buffer.episodes)
+
+    @property
+    def buffer(self) -> BufferProtocol:
+        return self._buffer
+
+    @property
+    def transition_count(self) -> int:
+        return self._buffer.transition_count
+
+    @property
+    def transition_picker(self) -> TransitionPickerProtocol:
+        return self._transition_picker
+
+    @property
+    def trajectory_slicer(self) -> TrajectorySlicerProtocol:
+        return self._trajectory_slicer
+
+    @property
+    def dataset_info(self) -> DatasetInfo:
+        return self._dataset_info

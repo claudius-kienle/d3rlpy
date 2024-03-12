@@ -1,4 +1,5 @@
 from typing import Any, Dict, Optional
+from pathlib import Path
 from .logger import LoggerAdapter, LoggerAdapterFactory, SaveProtocol
 
 
@@ -14,12 +15,13 @@ class LoggerWanDBAdapter(LoggerAdapter):
         experiment_name (str): Name of the experiment.
     """
 
-    def __init__(self, project: Optional[str] = None, experiment_name: Optional[str] = None):
+    def __init__(self, project: Optional[str] = None, model_dir: Optional[Path] = None, experiment_name: Optional[str] = None):
         try:
             import wandb
         except ImportError as e:
             raise ImportError("Please install wandb") from e
         self.run = wandb.init(project=project, name=experiment_name)
+        self.model_dir = model_dir
 
     def write_params(self, params: Dict[str, Any]) -> None:
         """Writes hyperparameters to WandB config."""
@@ -40,6 +42,12 @@ class LoggerWanDBAdapter(LoggerAdapter):
     def save_model(self, epoch: int, algo: SaveProtocol) -> None:
         """Saves models to Weights & Biases. Not implemented for WandB."""
         # Implement saving model to wandb if needed
+        if self.model_dir is not None:
+            model_dir = self.model_dir
+        else:
+            model_dir = Path(wandb.run.dir)
+        model_path = model_dir / f"model_{epoch}.d3"
+        algo.save(model_path)
         pass
 
     def close(self) -> None:
@@ -56,7 +64,7 @@ class WanDBAdapterFactory(LoggerAdapterFactory):
 
     _project: str
 
-    def __init__(self, project: Optional[str] = None) -> None:
+    def __init__(self, project: Optional[str] = None, model_dir: Optional[Path] = None) -> None:
         """Initialize the WandB Logger Adapter Factory.
 
         Args:
@@ -65,6 +73,7 @@ class WanDBAdapterFactory(LoggerAdapterFactory):
         """
         super().__init__()
         self._project = project
+        self._model_dir = model_dir
 
     def create(self, experiment_name: str) -> LoggerAdapter:
         """Creates a WandB Logger Adapter instance.
@@ -76,4 +85,4 @@ class WanDBAdapterFactory(LoggerAdapterFactory):
             LoggerAdapter: Instance of the WandB Logger Adapter.
 
         """
-        return LoggerWanDBAdapter(project=self._project, experiment_name=experiment_name)
+        return LoggerWanDBAdapter(project=self._project, model_dir=self._model_dir, experiment_name=experiment_name)
